@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Document</title>
+  </head>
+  <body>
+    <div id="savediv"><a href="#" id="saveLink">Lock Frame</a></div>
+
+    <div class="side-panel-left">
+      <div class="side-panel-content">
+        <ul style="list-style-type: none">
+          <li>1.First Upload an image</li>
+          <li>2.Choose the corresponding IFC format model</li>
+          <li>
+            3.Set the FOV on the right. If unknown leave to default or set it until the model closely matches
+            the image.
+          </li>
+          <li>
+            4.Adjust the model by using mouse. Scroll to zoom in & out. Right
+            click and drag to move the model around and left click and drag to
+            rotate(the model rotates around the centre point of the screen.)
+          </li>
+          <li>
+            5.Try to match the size and position of the BIM over the image for
+            exact overlay. Click Lock Frame link when the match is close.
+          </li>
+          <li><img src="helpp.gif" alt="gifhelp" id="gifhelp" /></li>
+          <li>
+            6.Click Overlay items to see the difference between the BIM and
+            Current site image.
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="open-button" id="help" onclick="toggleSidePanel()">Close</div>
+
+    <div id="container">
+      <div class="side-panel-right">
+        
+
+        <div class="angle-slider-container" id="angle-slider-container">
+          <input
+            type="range"
+            id="fov-slider"
+            min="3"
+            max="150"
+            step="1"
+            value="60"
+          />
+          <div class="fov-display">FOV: 60°</div>
+        </div>
+        <button id="showTree" >Show All</button>
+
+        <div id="ifc-tree">
+          
+        </div>
+      </div>
+
+      SELECT A PICTURE
+      <input type="file" accept="image/png, image/jpeg" id="file-input-img" />
+
+      SELECT THE IFC MODEL
+      <input type="file" name="load" id="file-input" />
+
+      <div id="subcont">
+        <img src="" alt="Image" id="canvas-ref" />
+        <canvas id="three-canvas"></canvas>
+      </div>
+    </div>
+
+    <div id="cont">
+      <button id="toggleButton">Overlay Items</button>
+      <div id="cont1a">
+        <div class="half-container">
+          <div class="img-container">
+            <img src="" id="img1_aux" style="visibility: hidden; width: 200%" />
+            <img
+              src=""
+              ondragstart="drag_start();"
+              ondrag="while_drag(0);"
+              ondragend="drag_end();"
+              id="img1"
+              class="img"
+            />
+          </div>
+        </div>
+        <div
+          id="separator"
+          draggable="true"
+          ondragstart="drag_start();"
+          ondrag="while_drag(1);"
+          ondragend="drag_end();"
+        >
+          <div id="marker"></div>
+        </div>
+        <div class="half-container">
+          <div class="img-container">
+            <img src="" id="img2_aux" style="visibility: hidden; width: 200%" />
+            <img
+              src=""
+              ondragstart="drag_start();"
+              ondrag="while_drag(0);"
+              ondragend="drag_end();"
+              id="img2"
+              class="img"
+            />
+          </div>
+        </div>
+      </div>
+      <div class="mix-container" id="cont1b">
+        <div class="slider-container">
+          Slide to mix
+          <input type="range" id="sliders" min="0" max="100" value="100" />
+        </div>
+        <div id="miximgcont">
+          <img src="" alt="Image 1" id="imageov1" />
+          <img src="" alt="Image 2" id="imageov2" />
+        </div>
+      </div>
+    </div>
+    <script src="bundle.js"></script>
+    <script>
+      function toggleSidePanel() {
+        var sidePanel = document.querySelector(".side-panel-left");
+        var help = document.querySelector("#help");
+        if (sidePanel.style.left === "-250px") {
+          sidePanel.style.left = "0";
+          help.innerHTML = "X";
+        } else {
+          sidePanel.style.left = "-250px";
+          help.innerHTML = "Help?";
+        }
+      }
+      var half_container = document.getElementsByClassName("half-container");
+      var img_container = document.getElementsByClassName("img-container");
+
+      // var slider = document.getElementById("slider");
+      var img1 = document.getElementById("img1");
+      var img2 = document.getElementById("img2");
+      //var separator = document.getElementById("separator");
+      var dragX, dragY, x, y;
+      var img1_precLeft = 0;
+      var img2_precLeft = 0;
+      var img1_precTop = 0;
+      var img2_precTop = 0;
+      var scale = 1;
+
+      var img1_baseTop;
+      var img1_baseLeft;
+      var img2_baseTop;
+      var img2_baseLeft;
+
+      var div1_width;
+      var div2_width;
+      var img_height = 0;
+
+      // img1.ondragstart = drag_start;
+      // img2.ondragstart = drag_start;
+      // separator.ondragstart = drag_start;
+
+      // img1.ondragend = drag_end;
+      // img2.ondragend = drag_end;
+      // separator.ondragend = drag_end;
+
+      // img1.ondrag = while_drag(0);
+      // img2.ondrag = while_drag(0);
+      // separator.ondrag = while_drag(1);
+
+      function drag_start() {
+        //event = event || window.event;
+        dragX =
+          window.event
+            .clientX /*- document.getElementById('drag-img').offsetLeft*/;
+        dragY =
+          window.event
+            .clientY /*- document.getElementById('drag-img').offsetTop*/;
+        document.ondragover = function (event) {
+          event = event || window.event;
+          (x = event.pageX), (y = event.pageY);
+        };
+
+        div1_width = half_container[0].getBoundingClientRect().width;
+        div2_width = half_container[1].getBoundingClientRect().width;
+      }
+
+      function while_drag(overlay) {
+        if (overlay) moveOverlay();
+        else {
+          dragImg(
+            img1,
+            img1_precLeft,
+            img1_precTop,
+            img1_baseLeft,
+            img1_baseTop
+          );
+          dragImg(
+            img2,
+            img2_precLeft,
+            img2_precTop,
+            img2_baseLeft,
+            img2_baseTop
+          );
+        }
+      }
+
+      function moveOverlay() {
+        var spostamento = x - dragX;
+        if (div1_width + spostamento < 0 || div2_width - spostamento < 0)
+          return;
+
+        if (img_height == 0)
+          img_height = img_container[1].getBoundingClientRect().height;
+
+        half_container[0].style.width = div1_width + spostamento + "px";
+        half_container[1].style.width = div2_width - spostamento + "px";
+        img_container[0].style.height = img_height + "px";
+        img_container[1].style.height = img_height + "px";
+      }
+
+      function dragImg(img, precLeft, precTop) {
+        var img_width = img.getBoundingClientRect().width;
+        var img_height = img.getBoundingClientRect().height;
+        var orig_width = img_width / scale;
+        var orig_height = img_height / scale;
+
+        console.log(-(orig_height - img_height) / 2);
+
+        if (img.id == "img1") {
+          var left = precLeft + (x - dragX);
+          if (left > -(orig_width - img_width) / 2)
+            left = -(orig_width - img_width) / 2 + "px";
+          else if (left < (orig_width - img_width) / 2)
+            left = (orig_width - img_width) / 2 + "px";
+          img.style.left = left + "px";
+        } else {
+          var right = precLeft + (dragX - x);
+          if (right > -(orig_width - img_width) / 2)
+            right = -(orig_width - img_width) / 2 + "px";
+          else if (right < (orig_width - img_width) / 2)
+            right = (orig_width - img_width) / 2 + "px";
+          img.style.right = right + "px";
+        }
+
+        var top = precTop + (y - dragY);
+        if (top > -(orig_height - img_height) / 2)
+          top = -(orig_height - img_height) / 2 + "px";
+        else if (top < (orig_height - img_height) / 2)
+          top = (orig_height - img_height) / 2 + "px";
+        img.style.top = top + "px";
+      }
+
+      function drag_end() {
+        img1_precLeft = img1.style.left
+          ? parseInt(img1.style.left.replace("px", ""))
+          : 0;
+        img1_precTop = img1.style.top
+          ? parseInt(img1.style.top.replace("px", ""))
+          : 0;
+        img2_precLeft = img2.style.right
+          ? parseInt(img2.style.right.replace("px", ""))
+          : 0;
+        img2_precTop = img2.style.top
+          ? parseInt(img2.style.top.replace("px", ""))
+          : 0;
+      }
+    </script>
+  </body>
+</html>
